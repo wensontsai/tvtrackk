@@ -1,8 +1,29 @@
-body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
-}
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,400,300,600,700);
 
-a {
-  color: #00B7FF;
-}
+$icon-font-path: '../fonts/';
+$body-bg: #e4e7ec;
+
+$font-family-base: 'Open Sans', sans-serif;
+$headings-color: #111;
+$headings-font-family: Avenir, sans-serif;
+$headings-font-weight: bold;
+
+$brand-success: #22ae5f;
+$brand-primary: #1d7cf4;
+$brand-danger: #b30015;
+$brand-warning: $ffd66a;
+
+$text-muted: #90939a;
+$link-color: #000;
+
+$navbar-default-link-active-bg: #f7f7f7;
+$navbar-default-link-color: $848484;
+$navbar-default-bg: #fff;
+$navbar-default-border: #e3e9ec;
+
+$navbar-default-brand-color: #333;
+$navbar-default-brand-hover-color: #ffe939;
+$navbar-default-brand-hover-bg: #333;
+
+$btn-success-bg: $brand-success;
+$btn-sucess-border: darken($btn-success-bg, 3%);
