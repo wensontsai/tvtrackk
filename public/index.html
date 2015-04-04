@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html ng-app="MyApp" lang="en"> <!-- ng-app determines this as root element of app -->
+<head>
+  <meta charset="UTF-8">
+  <title>tvtracckkkck</title>
+
+  <base href="/"><!-- necessary to enable HTML5 history API in angular.js -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="stylesheet" href="stylesheets/style.css">
+
+  <script src="vendor/angular.js"></script>
+  <script src="vendor/angular-strap.js"></script>
+  <script src="vendor/angular-strap.tpl.js"></script>
+  <script src="vendor/angular-messages.js"></script>
+  <script src="vendor/angular-resource.js"></script>
+  <script src="vendor/angular-route.js"></script>
+  <script src="vendor/angular-cookies.js"></script>
+  <script src="vendor/moment.min.js"></script>
+
+  <script src="app.js"></script>
+</head>
+
+
+<body>
+    <div class="nav bar navbar-default navbar-static-top" role='navigation' bs-navbar>
+      <div class="navbar-header">
+        <a class="navbar-brand" href="/">
+          <span class="glyphicon glyphicon-film"></span>
+          Show <strong>Trackr</strong>
+        </a>
+      </div>
+        <ul class="nav navbar-nav">
+          <li data-match-route="/$"<a href="/">Home</a></li>
+          <li data-match-route="/add"><a href="/add"></a></li>
+        </ul>
+        <ul class="nav navbar-nav pull-right" ng-if="!currentUser">
+          <li data-match-route="/login"<a href="/login">Login</a></li>
+          <li data-match-route="/signup"><a href="/signup"></a></li>
+        </ul>
+
+    </div>
+
+    <div ng-view></div><!-- directive that includes rendered template of current route -->
+    <!-- every time current route changes, included view changes in accordance to config of $route service -->
+
+
+
+
+</body>
+</html>
