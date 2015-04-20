@@ -13,7 +13,10 @@ angular.module('MyApp')
           ctrl.$setValidity('repeat', false);
         });
 
-
+        otherInput.$pasers.push(function(value){
+          ctrl.$setValidity('repeat', value === ctrl.$viewValue);
+          return value;
+        });
       }
     };
   });
