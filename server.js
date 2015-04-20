@@ -12,6 +12,14 @@ var _ = require('lodash');
 var session = require('express-session');
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
+var agenda = require('agenda')({ db: { address: 'localhost:27017/test' } });
+var sugar = require('sugar');
+var nodemailer = require('nodemailer');
+var csso = require('gulp-csso');
+var uglify = require('gulp-uglify');
+var concat = require('gulp-concat');
+var templateCache = require('gulp-angular-templatecache');
+var compress = require('compression')
 
 var app = express();
 app.set('port', process.env.PORT || 3030);
@@ -76,6 +84,8 @@ mongoose.connect('mongodb://localhost/tvtracker');
 
 
 // Middleware //
+// compression is highest in stack so all responses compressed //
+app.use(compress());
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
@@ -83,7 +93,7 @@ app.use(cookieParser());
 app.use(session({ secret: 'keyboard cat' }));
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: 86400000 }));
 app.use(function(req, res, next){
   if (req.user){
     res.cookie('user', JSON.stringify(req.user));
@@ -126,16 +136,16 @@ app.get('/api/logout', function(req, res, next) {
 
 
 // gets all shows
-app.get('/api/shows', function(req, res, next){
+app.get('/api/shows', function(req, res, next) {
   var query = Show.find();
-  if(req.query.genre){
+  if (req.query.genre) {
     query.where({ genre: req.query.genre });
-  } else if (req.query.alphabet){
-    query.where({ name: new RegExp('^' + '[' + req.query.alphabet + ']', 'i') })
+  } else if (req.query.alphabet) {
+    query.where({ name: new RegExp('^' + '[' + req.query.alphabet + ']', 'i') });
   } else {
     query.limit(12);
   }
-  query.exec(function(err, shows){
+  query.exec(function(err, shows) {
     if (err) return next(err);
     res.send(shows);
   });
@@ -149,8 +159,33 @@ app.get('/api/shows/:id', function(req, res, next){
   });
 });
 
+// subscribe to a show
+app.post('/api/subscribe', ensureAuthenticated, function(req, res, next){
+  Show.findById(req.body.showId, function(err, show){
+    if (err) return next(err);
+    show.subscribers.push(req.user.id);
+    show.save(function(err){
+      if (err) return next(err);
+      res.send(200);
+    });
+  });
+});
+
+// unsubscribe from show
+app.post('/api/unsubscribe', ensureAuthenticated, function(req, res, next) {
+  Show.findById(rez.body.showId, function(err, show){
+    if (err) return next(err);
+    var index = show.subscribers.indexOf(req.user.id);
+    show.subscribers.splice(index, 1);
+    show.save(function(err){
+      if (err) return next(err);
+      res.send(200);
+    });
+  });
+});
+
 // add a new show
-app.post('/api/shows', function(req, res, next){
+app.post('/api/shows', function(req, res, next) {
   var apiKey = '9EF1D1E7D28FDA0B';
   var parser = xml2js.Parser({
     explicitArray: false,
@@ -162,25 +197,22 @@ app.post('/api/shows', function(req, res, next){
     .replace(/[^\w-]+/g, '');
 
   async.waterfall([
-    function(callback){
+    function(callback) {
       request.get('http://thetvdb.com/api/GetSeries.php?seriesname=' + seriesName, function(error, response, body) {
         if (error) return next(error);
-        parser.parseString(body, function(err, result){
-          // 404 response is sent back if TVDB API has no info on show - seriesid !exist
-          if (!result.data.series){
+        parser.parseString(body, function(err, result) {
+          if (!result.data.series) {
             return res.send(404, { message: req.body.showName + ' was not found.' });
           }
-          // else set seriesID
           var seriesId = result.data.series.seriesid || result.data.series[0].seriesid;
           callback(err, seriesId);
         });
       });
     },
-    // pass to query
     function(seriesId, callback) {
       request.get('http://thetvdb.com/api/' + apiKey + '/series/' + seriesId + '/all/en.xml', function(error, response, body) {
         if (error) return next(error);
-        parser.parseString(body, function(err, result){
+        parser.parseString(body, function(err, result) {
           var series = result.data.series;
           var episodes = result.data.episode;
           var show = new Show({
@@ -199,7 +231,7 @@ app.post('/api/shows', function(req, res, next){
             poster: series.poster,
             episodes: []
           });
-          _.each(episodes, function(episode){
+          _.each(episodes, function(episode) {
             show.episodes.push({
               season: episode.seasonnumber,
               episodeNumber: episode.episodenumber,
@@ -212,33 +244,72 @@ app.post('/api/shows', function(req, res, next){
         });
       });
     },
-    // pass show object to next function
-    function( show, callback ){
+    function(show, callback) {
       var url = 'http://thetvdb.com/banners/' + show.poster;
-      request({ url: url, encoding: null }, function(error, response, body){
-        //convert poster image to Base64, pass to callback function
+      request({ url: url, encoding: null }, function(error, response, body) {
         show.poster = 'data:' + response.headers['content-type'] + ';base64,' + body.toString('base64');
         callback(error, show);
       });
     }
-  //pass show object, save to database
-  ], function(err, show){
-    if(err) return next(err);
-    show.save(function(err){
+  ], function(err, show) {
+    if (err) return next(err);
+    show.save(function(err) {
       if (err) {
-        // 11000 -> duplicate key error, no duplicate _id fields in Mongo.  either this or explicitly set unique property like with userSchema
         if (err.code == 11000) {
-          // 409 -> conflict code
-          return res.send(409, { message: show.name + ' already exists.'});
+          return res.send(409, { message: show.name + ' already exists.' });
         }
         return next(err);
       }
-      res.send(200)
+
+      var alertDate = Date.create('Next ' + show.airsDayOfWeek + ' at ' + show.airsTime).rewind({ hour: 2});
+      agenda.schedule(alertDate, 'send email alert', show.name).repeatEvery('1 week');
+
+      res.send(200);
     });
   });
 });
 
 
+// agenda tasks (Agenda is scheduling lib similar to node-cron) //
+agenda.define('send email alert', function(job, done) {
+  Show.findOne({ name: job.attrs.data }).populate('subscribers').exec(function(err, show){
+    var emails = show.subscribers.map(function(user){
+      return user.email;
+    });
+
+    var upcomingEpisode = show.episodes.filter(function(episode){
+      return new Date(episode.firstAired) > new Date();
+    })[0];
+
+    var smtpTransport = nodemailer.createTransport('SMTP', {
+      service: 'SendGrid',
+      auth: { user: 'hslogin', pass: 'hspassword00'}
+    });
+
+    var mailOptions = {
+      from: 'Fred Hoody Hoo <foo@blurdyblop.com>',
+      to: emails.join(','),
+      subject: show.name + ' is starting soon!',
+      text: show.name + ' starts in less than 2 hours on ' + show.network + '.\n\n' + 'Episode ' + upcomingEpisode.episodeNumber + ' Overview\n\n' + upcomingEpisode.overview
+    };
+
+    smtpTransport.sendMail(mailOptions, function(error, response){
+      console.log('Message sent: ' + response.message);
+      smtpTransport.close();
+      done();
+    });
+  })
+});
+
+agenda.start();
+
+agenda.on('start', function(job){
+  console.log("Job %s starting", job.attrs.name);
+});
+
+agenda.on('complete', function(job){
+  console.log("Job %x finished", job.attrs.name);
+});
 
 // error middleware, prints stack trace to console, but returns only error message to user //
 app.use(function(err, req, res, next){
