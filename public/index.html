@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <title>tvtracckkkck</title>
 
-  <base href="/"><!-- necessary to enable HTML5 history API in angular.js -->
+  <base href="/">
+  <!-- necessary to enable HTML5 history API in angular.js -->
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -24,7 +25,13 @@
 
   <script src="app.js"></script>
   <script src="controllers/main.js"></script>
+  <script src="controllers/add.js"></script>
   <script src="services/show.js"></script>
+  <script src="services/subscription.js"></script>
+  <script src="filters/fromNow.js"></script>
+  <script src="directives/repeatPassword.js"></script>
+
+
 </head>
 
 
@@ -48,13 +55,11 @@
           <li class="navbar-text" ng-bind=currentUser.email></li>
           <li><a href="javascript:void(0)" ng-click="logout()">Logout</a></li>
         </ul>
-
     </div>
 
-    <div ng-view></div><!-- directive that includes rendered template of current route -->
+    <div ng-view>
+    </div><!-- directive that includes rendered template of current route -->
     <!-- every time current route changes, included view changes in accordance to config of $route service -->
-
-
 
 
 </body>
